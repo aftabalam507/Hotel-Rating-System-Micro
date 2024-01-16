@@ -1,14 +1,18 @@
 package com.aftab.service.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.aftab.entity.Hotel;
 import com.aftab.entity.Rating;
 import com.aftab.entity.User;
 import com.aftab.exception.ResourceNotFoundException;
@@ -22,11 +26,11 @@ public class UserServiceImpl implements UserService {
 
 	@Autowired
 	private UserRepo userRepo;
-	
+
 	@Autowired
 	private RestTemplate restTemplate;
-	
-	private org.slf4j.Logger logger=LoggerFactory.getLogger(UserService.class);
+
+	private org.slf4j.Logger logger = LoggerFactory.getLogger(UserService.class);
 
 	@Override
 	public User createUser(User user) {
@@ -47,12 +51,29 @@ public class UserServiceImpl implements UserService {
 
 		User user = this.userRepo.findById(userId)
 				.orElseThrow(() -> new ResourceNotFoundException("User with given id is not find !! : " + userId));
-		//fetching rating from rating service
-		//http://localhost:8083/ratings/user/80c56697-2b63-4b55-b5c1-57de9d549d7a
+		// fetching rating from rating service
+		// http://localhost:8083/ratings/user/80c56697-2b63-4b55-b5c1-57de9d549d7a
+
+		Rating[] ratingsOfUser = restTemplate
+				.getForObject("http://localhost:8083/ratings/user/" + user.getUserId(), Rating[].class);
+		logger.info("{} ", ratingsOfUser);
 		
-		ArrayList<Rating> ratingsOfUser = restTemplate.getForObject("http://localhost:8083/ratings/user/"+user.getUserId(), ArrayList.class);
-		logger.info("{} ",ratingsOfUser);
-		user.setRatings(ratingsOfUser);
+		List<Rating> ratings = Arrays.stream(ratingsOfUser).toList();
+
+		List<Rating> ratingList = ratings.stream().map(rating -> {
+			// api call to hotel service to get the hotel
+			// http://localhost:8082/hotels/d63ea1e8-b22d-42f8-979c-d8652808c519
+			ResponseEntity<Hotel> forEntity = restTemplate
+					.getForEntity("http://localhost:8082/hotels/"+rating.getHotelId(), Hotel.class);
+			Hotel hotel = forEntity.getBody();
+			// set the hotel to rating
+			rating.setHotel(hotel);
+			// return rating
+			return rating;
+
+		}).collect(Collectors.toList());
+
+		user.setRatings(ratingList);
 		return user;
 	}
 
