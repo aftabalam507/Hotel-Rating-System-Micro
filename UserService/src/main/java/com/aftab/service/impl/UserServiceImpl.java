@@ -1,6 +1,5 @@
 package com.aftab.service.impl;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -16,8 +15,10 @@ import com.aftab.entity.Hotel;
 import com.aftab.entity.Rating;
 import com.aftab.entity.User;
 import com.aftab.exception.ResourceNotFoundException;
+import com.aftab.external.services.HotelService;
 import com.aftab.repository.UserRepo;
 import com.aftab.service.UserService;
+import com.netflix.discovery.converters.Auto;
 
 import ch.qos.logback.classic.Logger;
 
@@ -29,6 +30,9 @@ public class UserServiceImpl implements UserService {
 
 	@Autowired
 	private RestTemplate restTemplate;
+	
+	@Autowired
+	private HotelService hotelService;
 
 	private org.slf4j.Logger logger = LoggerFactory.getLogger(UserService.class);
 
@@ -63,9 +67,9 @@ public class UserServiceImpl implements UserService {
 		List<Rating> ratingList = ratings.stream().map(rating -> {
 			// api call to hotel service to get the hotel
 			// http://localhost:8082/hotels/d63ea1e8-b22d-42f8-979c-d8652808c519
-			ResponseEntity<Hotel> forEntity = restTemplate
-					.getForEntity("http://HOTEL-SERVICE/hotels/"+rating.getHotelId(), Hotel.class);
-			Hotel hotel = forEntity.getBody();
+//			ResponseEntity<Hotel> forEntity = restTemplate
+//					.getForEntity("http://HOTEL-SERVICE/hotels/"+rating.getHotelId(), Hotel.class);
+			Hotel hotel = hotelService.getHotel(rating.getHotelId());
 			// set the hotel to rating
 			rating.setHotel(hotel);
 			// return rating
